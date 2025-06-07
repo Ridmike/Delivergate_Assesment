@@ -27,6 +27,7 @@ router.post('/', async (req, res) => {
     }
 });
 
+//fetch data and filtering
 router.get('/', async (req, res) => {
     try {
         const { date } = req.query;
@@ -55,7 +56,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-//fetch data and filtering
+
 router.get('/:id', async (req, res) => {
     try {
         const todo = await Todo.findById(req.params.id);

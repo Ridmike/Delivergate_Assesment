@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, SafeArea
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { tasks } from '../Data/TodoSet';
+import { useAuthStore } from '../store/authStore';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { Task } from '../types';
@@ -12,20 +13,47 @@ import { BlurView } from 'expo-blur';
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 const Home: React.FC<Props> = ({ navigation }) => {
-  const [selectedDate, setSelectedDate] = useState('2025-06-06');
+  const user = useAuthStore(state => state.user);
+  const [selectedDate, setSelectedDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [filteredTasks, setFilteredTasks] = useState(tasks);
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);  const [calendarDates, setCalendarDates] = useState<Array<{ day: string; date: number; fullDate: string }>>([]);
+  
+  // Generate calendar dates dynamically
+  const generateCalendarDates = () => {
+    const today = new Date();
+    const dates = [];
+    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    
+    // Generate 7 days starting from today
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      const day = dayNames[date.getDay()];
+      const dateNum = date.getDate();
+      const fullDate = date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+      
+      dates.push({
+        day,
+        date: dateNum,
+        fullDate
+      });
+    }
+    
+    return dates;
+  };
 
-  const calendarDates = [
-    { day: 'WED', date: 5, fullDate: '2025-06-05' },
-    { day: 'THU', date: 6, fullDate: '2025-06-06' },
-    { day: 'FRI', date: 7, fullDate: '2025-06-07' },
-    { day: 'SAT', date: 8, fullDate: '2025-06-08' },
-    { day: 'SUN', date: 9, fullDate: '2025-06-09' },
-    { day: 'MON', date: 10, fullDate: '2025-06-10' },
-  ];
+  // Initialize calendar dates and set today as default selected date
+  useEffect(() => {
+    const generatedDates = generateCalendarDates();
+    setCalendarDates(generatedDates);
+    
+    // Set today as the default selected date
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedDate(today);
+  }, []);
 
   useEffect(() => {
     const filtered = tasks.filter(task => {
@@ -53,19 +81,51 @@ const Home: React.FC<Props> = ({ navigation }) => {
     setSelectedTaskId(null);
   };
 
-  const renderCalendarDate = ({ item }: { item: { day: string; date: number; fullDate: string } }) => (
-    <TouchableOpacity
-      style={[styles.dateItem, selectedDate === item.fullDate && styles.selectedDateItem]}
-      onPress={() => setSelectedDate(item.fullDate)}
-    >
-      <Text style={[styles.dayText, selectedDate === item.fullDate && styles.selectedDayText]}>
-        {item.day}
-      </Text>
-      <Text style={[styles.dateText, selectedDate === item.fullDate && styles.selectedDateText]}>
-        {item.date}
-      </Text>
-    </TouchableOpacity>
-  );
+  // Function to refresh calendar dates (useful for date changes)
+  const refreshCalendar = () => {
+    const generatedDates = generateCalendarDates();
+    setCalendarDates(generatedDates);
+    
+    // If selected date is not in the new range, select today
+    const today = new Date().toISOString().split('T')[0];
+    const isSelectedDateInRange = generatedDates.some(date => date.fullDate === selectedDate);
+    if (!isSelectedDateInRange) {
+      setSelectedDate(today);
+    }
+  };
+
+  const renderCalendarDate = ({ item }: { item: { day: string; date: number; fullDate: string } }) => {
+    const isToday = item.fullDate === new Date().toISOString().split('T')[0];
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.dateItem, 
+          selectedDate === item.fullDate && styles.selectedDateItem,
+          isToday && !selectedDate && styles.todayDateItem
+        ]}
+        onPress={() => setSelectedDate(item.fullDate)}
+      >
+        <Text style={[
+          styles.dayText, 
+          selectedDate === item.fullDate && styles.selectedDayText,
+          isToday && styles.todayDayText
+        ]}>
+          {item.day}
+        </Text>
+        <Text style={[
+          styles.dateText, 
+          selectedDate === item.fullDate && styles.selectedDateText,
+          isToday && styles.todayDateText
+        ]}>
+          {item.date}
+        </Text>
+        {isToday && (
+          <View style={styles.todayIndicator} />
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   const renderTask = ({ item }: { item: Task }) => (
     <View>
@@ -126,6 +186,14 @@ const Home: React.FC<Props> = ({ navigation }) => {
     </View>
   );
 
+  const handleProfilePress = () => {
+    if (user) {
+      navigation.navigate('Profile');
+    } else {
+      navigation.replace('SignIn');
+    }
+  };
+
   return (
     <TouchableWithoutFeedback onPress={() => {
       setSelectedTaskId(null);
@@ -139,10 +207,13 @@ const Home: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity onPress={() => setIsSidePanelOpen(true)}>
               <Ionicons name="menu" size={24} color="white" />
             </TouchableOpacity>
-            <Text style={styles.logo}>Miodo Logo</Text>
-            <TouchableOpacity>
+            <Text style={styles.logo}>Miodo Logo</Text>            <TouchableOpacity onPress={handleProfilePress}>
               <View style={styles.profilePicture}>
-                <Ionicons name="person" size={20} color="#6366f1" />
+                <Ionicons 
+                  name={user ? "person" : "person-outline"} 
+                  size={20} 
+                  color="#6366f1" 
+                />
               </View>
             </TouchableOpacity>
           </View>
@@ -261,12 +332,28 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     alignItems: 'center',
     minWidth: 60,
+    position: 'relative',
   },
   selectedDateItem: { backgroundColor: 'rgba(255,255,255,0.9)' },
+  todayDateItem: { 
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
   dayText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginBottom: 4 },
   selectedDayText: { color: '#6366f1' },
+  todayDayText: { color: 'white', fontWeight: '700' },
   dateText: { fontSize: 16, fontWeight: '700', color: 'white' },
   selectedDateText: { color: '#6366f1' },
+  todayDateText: { color: 'white', fontWeight: '800' },
+  todayIndicator: {
+    position: 'absolute',
+    bottom: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'white',
+  },
   tasksContainer: { flex: 1, paddingHorizontal: 20 },
   taskCard: {
     flexDirection: 'row',
