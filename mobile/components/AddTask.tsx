@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../App';
+import { useAuthStore } from '../store/authStore';
+
+type AddTaskScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const AddTask = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<AddTaskScreenNavigationProp>();
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+
+  const API_URL = 'http://192.168.78.42:3000/api';
+  const { token } = useAuthStore(); // Get token from auth store
 
   // Handle date selection
   const handleDateChange = (_event: any, selectedDate?: Date) => {
@@ -45,21 +54,74 @@ const AddTask = () => {
     }
   };
 
-  const handleSubmit = () => {
-    if (!title.trim() || !time) {
-        alert('Please fill in all fields before adding the task.');
-        return;
+const handleSubmit = async () => {
+  try {
+    if (!title.trim() || !description.trim() || !time) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (!token) {
+      Alert.alert('Error', 'Please sign in to add tasks');
+      navigation.navigate('SignIn');
+      return;
     }
 
     const taskData = {
-        date: formatDate(date),
-        time,
-        title,
-        description,
+      title: title.trim(),
+      description: description.trim(),
+      datePosted: formatDate(date),
+      timePosted: time,
+      important: false,
+      completed: false,
     };
 
-    alert('Task added successfully!');
+    console.log('Sending request to:', `${API_URL}/todos`);
+    console.log('Request data:', taskData);
+    console.log('Auth token:', token ? 'Present' : 'Missing');
+
+    const response = await fetch(`${API_URL}/todos`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: title.trim(),
+        description: description.trim(),
+        datePosted: formatDate(date),
+        timePosted: time,
+        important: false,
+        completed: false,
+      }),
+    });    const data = await response.json();
+    console.log('Response status:', response.status);
+    console.log('Response data:', data);
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || data.message || `Server error (${response.status})`
+      );
+    }
+    
+    Alert.alert('Success', 'Task added successfully!');
+    setDate(new Date());
+    setTime('');
+    setTitle('');
+    setDescription('');
     navigation.goBack(); 
+  } catch (error: any) {
+    console.error('Error adding task:', error);
+    
+    if (error.message.includes('Failed to fetch') || error.message.includes('Network request failed')) {
+      Alert.alert(
+        'Connection Error',
+        'Unable to connect to the server. Please check your internet connection.'
+      );
+    } else {
+      Alert.alert('Error', error.message || 'Failed to add task');
+    }
+  }
 };
 
   return (

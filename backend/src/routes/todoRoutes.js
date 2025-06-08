@@ -1,9 +1,27 @@
 import express from 'express';
 import Todo from '../models/Todo.js';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+// Authentication middleware
+const auth = async (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.userId;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Please authenticate' });
+  }
+};
+
+router.post('/', auth, async (req, res) => {
     try {
         const { title, description, completed, datePosted, timePosted, important } = req.body;
 
@@ -12,6 +30,7 @@ router.post('/', async (req, res) => {
         }
 
         const newTodo = new Todo({
+            userId: req.userId,
             title,
             description,
             completed: completed || false,
@@ -28,24 +47,12 @@ router.post('/', async (req, res) => {
 });
 
 //fetch data and filtering
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
     try {
         const { date } = req.query;
-
-        let query = {};
-        
-        if (date) {
-            // Create start and end of the specified date
-            const startDate = new Date(date);
-            startDate.setHours(0, 0, 0, 0);
-            
-            const endDate = new Date(date);
-            endDate.setHours(23, 59, 59, 999);
-
-            query.datePosted = {
-                $gte: startDate,
-                $lte: endDate
-            };
+        let query = { userId: req.userId };
+          if (date) {
+            query.datePosted = date;
         }
 
         const todos = await Todo.find(query).sort({ timePosted: 1 });
@@ -56,7 +63,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-
+// edit todo's
 router.get('/:id', async (req, res) => {
     try {
         const todo = await Todo.findById(req.params.id);
@@ -71,15 +78,39 @@ router.get('/:id', async (req, res) => {
 });
 
 //delete todo's 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
     try {
-        const todo = await Todo.findByIdAndDelete(req.params.id);
+        const todo = await Todo.findOne({ _id: req.params.id, userId: req.userId });
         if (!todo) {
             return res.status(404).json({ error: 'Todo not found' });
         }
+        await Todo.findByIdAndDelete(req.params.id);
         res.status(200).json({ message: 'Todo deleted successfully' });
     } catch (error) {
         console.log("Error deleting todo:", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Update todo completion status
+router.patch('/:id', auth, async (req, res) => {
+    try {
+        const { completed } = req.body;
+        
+        const todo = await Todo.findOne({ _id: req.params.id, userId: req.userId });
+        if (!todo) {
+            return res.status(404).json({ error: 'Todo not found' });
+        }
+
+        todo.completed = completed;
+        await todo.save();
+
+        res.status(200).json({ 
+            message: 'Todo updated successfully',
+            todo 
+        });
+    } catch (error) {
+        console.log("Error updating todo:", error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

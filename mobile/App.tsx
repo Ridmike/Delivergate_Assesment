@@ -28,15 +28,9 @@ export default function App() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
         <NavigationContainer>
-          <Stack.Navigator 
-            initialRouteName="Home"
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: 'white' }
-            }}
-          >
-            <Stack.Screen name="Home" component={Home} />
-            <Stack.Screen name="TaskDetails" component={TaskDetails} />
+          <Stack.Navigator initialRouteName="Home">
+            <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
+            <Stack.Screen name="TaskDetails" component={TaskDetails} options={{ headerShown: false }} />
             <Stack.Screen name="AddTask" component={AddTask} options={{ headerShown: false }} />
             <Stack.Screen name="EditScreen" component={EditScreen} options={{ headerShown: false }} />
             <Stack.Screen name="SignUp" component={SignUp} options={{ headerShown: false }} />
