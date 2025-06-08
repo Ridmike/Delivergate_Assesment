@@ -17,10 +17,15 @@ const todoSchema = new mongoose.Schema({
     completed: {
         type: Boolean, 
         default: false
-    },
-    datePosted: {
+    },    datePosted: {
         type: String,
-        required: true
+        required: true,
+        validate: {
+            validator: function(v) {
+                return /^\d{4}-\d{2}-\d{2}$/.test(v); // Validates YYYY-MM-DD format
+            },
+            message: props => `${props.value} is not a valid date format! Use YYYY-MM-DD`
+        }
     },
     timePosted: {
         type: String,

@@ -15,7 +15,7 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
-const API_URL = 'http://192.168.78.42:3000/api';
+const API_URL = 'http://192.168.1.11:3000/api';
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,

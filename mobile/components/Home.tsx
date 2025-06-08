@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, SafeAreaView, StatusBar, ScrollView, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, SafeAreaView, StatusBar, ScrollView, TouchableWithoutFeedback, Alert, ActivityIndicator, Platform, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { tasks } from '../Data/TodoSet';
 import { useAuthStore } from '../store/authStore';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
@@ -12,14 +11,60 @@ import { BlurView } from 'expo-blur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-const Home: React.FC<Props> = ({ navigation }) => {
-  const user = useAuthStore(state => state.user);
+const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = useAuthStore();
   const [selectedDate, setSelectedDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [filteredTasks, setFilteredTasks] = useState(tasks);
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);  const [calendarDates, setCalendarDates] = useState<Array<{ day: string; date: number; fullDate: string }>>([]);
-  
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [calendarDates, setCalendarDates] = useState<Array<{ day: string; date: number; fullDate: string }>>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  // API URLs for different environments
+  const API_URL = Platform.select({
+    android: 'http://192.168.1.11:3000/api',     // Android Emulator
+    ios: 'http://localhost:3000/api',         // iOS Simulator
+    default: 'http://192.168.1.11:3000/api'  // Your current IP
+  });
+  const fetchTasks = async (date?: string) => {
+    if (!token) {
+      navigation.replace('SignIn');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log('Fetching tasks for date:', date);
+      const url = `${API_URL}/todos${date ? `?date=${date}` : ''}`;
+      console.log('Fetch URL:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch tasks');
+      }
+
+      console.log('Fetched tasks:', data);
+      setTasks(data);
+      setFilteredTasks(data);
+      return data;
+    } catch (error: any) {
+      console.error('Error fetching tasks:', error);
+      Alert.alert('Error', error.message || 'Failed to fetch tasks');
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Generate calendar dates dynamically
   const generateCalendarDates = () => {
     const today = new Date();
@@ -45,40 +90,103 @@ const Home: React.FC<Props> = ({ navigation }) => {
     return dates;
   };
 
-  // Initialize calendar dates and set today as default selected date
+  // Initialize calendar and fetch initial tasks
   useEffect(() => {
     const generatedDates = generateCalendarDates();
     setCalendarDates(generatedDates);
     
-    // Set today as the default selected date
     const today = new Date().toISOString().split('T')[0];
     setSelectedDate(today);
   }, []);
 
+  // Fetch tasks when selected date changes
   useEffect(() => {
-    const filtered = tasks.filter(task => {
-      const matchesDate = task.date === selectedDate;
-      const matchesSearch =
-        task.taskTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.taskDescription.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesDate && matchesSearch;
+    if (!selectedDate || !token) return;
+    
+    fetchTasks(selectedDate).then(fetchedTasks => {
+      if (fetchedTasks) {
+        setFilteredTasks(fetchedTasks);
+      }
     });
-    setFilteredTasks(filtered);
-  }, [selectedDate, searchQuery]);
+  }, [selectedDate, token]);
 
-  const toggleTaskCompletion = (taskId: string) => {
-    const index = tasks.findIndex(task => task.id === taskId);
-    if (index !== -1) {
-      tasks[index].completed = !tasks[index].completed;
-      setFilteredTasks([...filteredTasks]); 
+  // Handle search filtering
+  useEffect(() => {
+    if (!tasks.length) return;
+    
+    const filtered = tasks.filter(task =>
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredTasks(filtered);
+  }, [searchQuery, tasks]);
+
+  const toggleTaskCompletion = async (taskId: string) => {
+    if (!token) {
+      navigation.replace('SignIn');
+      return;
+    }
+
+    try {
+      const task = filteredTasks.find(t => t._id === taskId);
+      if (!task) return;
+
+      const response = await fetch(`${API_URL}/todos/${taskId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          completed: !task.completed
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update task');
+      }
+
+      // Update local state
+      const updateTask = (taskList: Task[]) =>
+        taskList.map(t => t._id === taskId ? { ...t, completed: !t.completed } : t);
+      
+      setTasks(prev => updateTask(prev));
+      setFilteredTasks(prev => updateTask(prev));
+    } catch (error: any) {
+      console.error('Error updating task:', error);
+      Alert.alert('Error', error.message || 'Failed to update task');
     }
   };
 
-  const deleteTask = (taskId: string) => {
-    const newTasks = tasks.filter(task => task.id !== taskId);
-    tasks.splice(0, tasks.length, ...newTasks);
-    setFilteredTasks(filteredTasks.filter(task => task.id !== taskId));
-    setSelectedTaskId(null);
+  const deleteTask = async (taskId: string) => {
+    if (!token) {
+      navigation.replace('SignIn');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/todos/${taskId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete task');
+      }
+
+      // Update local state
+      setTasks(prev => prev.filter(task => task._id !== taskId));
+      setFilteredTasks(prev => prev.filter(task => task._id !== taskId));
+      setSelectedTaskId(null);
+    } catch (error: any) {
+      console.error('Error deleting task:', error);
+      Alert.alert('Error', error.message || 'Failed to delete task');
+    }
   };
 
   // Function to refresh calendar dates (useful for date changes)
@@ -128,17 +236,13 @@ const Home: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderTask = ({ item }: { item: Task }) => (
-    <View>
-      <TouchableOpacity
+    <View>      <TouchableOpacity
         style={styles.taskCard}
-        onPress={() => {
-          navigation.navigate('TaskDetails', { task: item });
-          setSelectedTaskId(null);
-        }}
+        onPress={() => handleTaskPress(item)}
       >
         <TouchableOpacity
           style={[styles.circle, item.completed && styles.completedCircle]}
-          onPress={() => toggleTaskCompletion(item.id)}
+          onPress={() => toggleTaskCompletion(item._id)}
         >
           {item.completed && (
             <Ionicons name="checkmark" size={16} color="white" />
@@ -147,22 +251,22 @@ const Home: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.taskTextContainer}>
           <Text style={[styles.taskTitle, item.completed && styles.completedTaskTitle]}>
-            {item.taskTitle}
+            {item.title}
           </Text>
-          <Text style={styles.taskTime}>{item.time}</Text>
+          <Text style={styles.taskTime}>{item.timePosted}</Text>
         </View>
 
         <TouchableOpacity
           style={styles.optionsButton}
           onPress={() =>
-            setSelectedTaskId(prev => (prev === item.id ? null : item.id))
+            setSelectedTaskId(prev => (prev === item._id ? null : item._id))
           }
         >
           <Ionicons name="ellipsis-horizontal" size={20} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
       </TouchableOpacity>
 
-      {selectedTaskId === item.id && (
+      {selectedTaskId === item._id && (
         <View style={styles.optionsPopup}>
           <TouchableOpacity
             style={styles.optionItem}
@@ -176,7 +280,7 @@ const Home: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.optionItem}
-            onPress={() => deleteTask(item.id)}
+            onPress={() => deleteTask(item._id)}
           >
             <Ionicons name="trash-outline" size={20} color="#ef4444" />
             <Text style={[styles.optionText, { color: '#ef4444' }]}>Delete</Text>
@@ -192,6 +296,64 @@ const Home: React.FC<Props> = ({ navigation }) => {
     } else {
       navigation.replace('SignIn');
     }
+  };
+
+  // Add this new function to handle task selection
+  const handleTaskPress = (task: Task) => {
+    setSelectedTask(task);
+  };
+
+  const renderTaskDetails = () => {
+    if (!selectedTask) return null;
+
+    return (
+      <Modal
+        visible={!!selectedTask}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedTask(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setSelectedTask(null)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalDate}>{selectedTask.datePosted}</Text>
+                  <Text style={styles.modalTime}>{selectedTask.timePosted}</Text>
+                </View>
+
+                <Text style={styles.modalTitle}>{selectedTask.title}</Text>
+                <Text style={styles.modalDescription}>{selectedTask.description}</Text>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity 
+                    style={styles.modalButton} 
+                    onPress={() => {
+                      setSelectedTask(null);
+                      navigation.navigate('EditScreen', { task: selectedTask });
+                    }}
+                  >
+                    <Ionicons name="create-outline" size={20} color="#6366f1" />
+                    <Text style={styles.modalButtonText}>Edit</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.modalButton, styles.deleteButton]} 
+                    onPress={() => {
+                      deleteTask(selectedTask._id);
+                      setSelectedTask(null);
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                    <Text style={[styles.modalButtonText, { color: '#ef4444' }]}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    );
   };
 
   return (
@@ -249,13 +411,21 @@ const Home: React.FC<Props> = ({ navigation }) => {
           </View>
 
           <ScrollView style={styles.tasksContainer} showsVerticalScrollIndicator={false}>
-            {filteredTasks.map(task => (
-              <View key={task.id}>{renderTask({ item: task })}</View>
-            ))}
-            {filteredTasks.length === 0 && (
+            {isLoading ? (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No tasks found</Text>
+                <ActivityIndicator size="large" color="white" />
               </View>
+            ) : (
+              <>
+                {filteredTasks.map(task => (
+                  <View key={task._id}>{renderTask({ item: task })}</View>
+                ))}
+                {filteredTasks.length === 0 && (
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>No tasks found</Text>
+                  </View>
+                )}
+              </>
             )}
           </ScrollView>
 
@@ -275,6 +445,8 @@ const Home: React.FC<Props> = ({ navigation }) => {
             isOpen={isSidePanelOpen}
             onClose={() => setIsSidePanelOpen(false)}
           />
+
+          {renderTaskDetails()}
         </LinearGradient>
       </SafeAreaView>
     </TouchableWithoutFeedback>
@@ -439,5 +611,79 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 998,
+  },  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    // padding: 16,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    minHeight: 300,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.44,
+    shadowRadius: 10.32,
+    elevation: 16,
+  },  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(99,102,241,0.1)',
+  },
+  modalDate: {
+    fontSize: 15,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  modalTime: {
+    fontSize: 15,
+    color: '#6366f1',
+    fontWeight: '700',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  modalDescription: {
+    fontSize: 16,
+    color: '#374151',
+    lineHeight: 24,
+    marginBottom: 32,
+    minHeight: 100,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(99,102,241,0.1)',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    color: '#6366f1',
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  deleteButton: {
+    backgroundColor: 'rgba(239,68,68,0.1)',
   },
 });

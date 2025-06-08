@@ -22,19 +22,22 @@ const auth = async (req, res, next) => {
 };
 
 router.post('/', auth, async (req, res) => {
-    try {
-        const { title, description, completed, datePosted, timePosted, important } = req.body;
+    try {        const { title, description, completed, datePosted, timePosted, important } = req.body;
 
         if (!title || !datePosted) {
             return res.status(400).json({ error: 'Title and Date is required.' });
         }
+
+        // Ensure datePosted is in YYYY-MM-DD format
+        const formattedDate = datePosted;
+        console.log('Creating todo with date:', formattedDate);
 
         const newTodo = new Todo({
             userId: req.userId,
             title,
             description,
             completed: completed || false,
-            datePosted,
+            datePosted: formattedDate,
             timePosted,
             important: important || false
         })
@@ -47,12 +50,19 @@ router.post('/', auth, async (req, res) => {
 });
 
 //fetch data and filtering
-router.get('/', auth, async (req, res) => {
-    try {
+router.get('/', auth, async (req, res) => {    try {
         const { date } = req.query;
         let query = { userId: req.userId };
-          if (date) {
+        if (date) {
+            // Log the incoming date and query parameters
+            console.log('Querying for date:', date);
+            console.log('Sample task dates:', await Todo.distinct('datePosted'));
+            
+            // Use exact match for the date
             query.datePosted = date;
+            
+            // Log the final query for debugging
+            console.log('Final query:', query);
         }
 
         const todos = await Todo.find(query).sort({ timePosted: 1 });

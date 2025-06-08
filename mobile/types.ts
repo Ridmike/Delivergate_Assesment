@@ -1,9 +1,10 @@
 export type Task = {
-  id: string;
-  taskTitle: string;
-  taskDescription: string;
-  date: string; 
-  time: string; 
+  _id: string;
+  title: string;
+  description: string;
+  datePosted: string;
+  timePosted: string;
   userId: string;
   completed: boolean;
+  important: boolean;
 };
