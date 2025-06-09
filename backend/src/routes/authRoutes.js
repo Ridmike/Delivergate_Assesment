@@ -1,6 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
+import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -90,6 +91,103 @@ router.post('/login', async (req, res) => {
     console.error('Login error:', error);
     res.status(500).json({ 
       message: 'Error logging in', 
+      error: error.message 
+    });
+  }
+});
+
+router.put('/update-profile', auth, async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    const userId = req.userId;
+
+    // Input validation
+    if (username && username.length < 3) {
+      return res.status(400).json({ 
+        message: 'Username must be at least 3 characters long' 
+      });
+    }
+
+    if (password && password.length < 6) {
+      return res.status(400).json({ 
+        message: 'Password must be at least 6 characters long' 
+      });
+    }
+
+    if (email && !/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+      return res.status(400).json({ 
+        message: 'Please enter a valid email' 
+      });
+    }
+
+    // Check if email is already taken
+    if (email) {
+      const existingUser = await User.findOne({ 
+        email, 
+        _id: { $ne: userId } 
+      });
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: 'Email already in use' 
+        });
+      }
+    }
+
+    // Check if username is already taken
+    if (username) {
+      const existingUser = await User.findOne({ 
+        username, 
+        _id: { $ne: userId } 
+      });
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: 'Username already in use' 
+        });
+      }
+    }
+
+    // Update user
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          ...(username && { username }),
+          ...(email && { email }),
+          ...(password && { password })
+        }
+      },
+      { 
+        new: true, 
+        select: '-password',
+        runValidators: true 
+      }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ 
+        message: 'User not found' 
+      });
+    }
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user: {
+        id: updatedUser._id,
+        email: updatedUser.email,
+        username: updatedUser.username
+      }
+    });
+
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: 'Validation error', 
+        error: error.message 
+      });
+    }
+    console.error('Update profile error:', error);
+    res.status(500).json({ 
+      message: 'Error updating profile', 
       error: error.message 
     });
   }

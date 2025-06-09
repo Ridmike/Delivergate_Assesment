@@ -102,17 +102,23 @@ router.delete('/:id', auth, async (req, res) => {
     }
 });
 
-// Update todo completion status
+// Update todo 
 router.patch('/:id', auth, async (req, res) => {
     try {
-        const { completed } = req.body;
+        const { title, description, datePosted, timePosted, completed } = req.body;
         
         const todo = await Todo.findOne({ _id: req.params.id, userId: req.userId });
         if (!todo) {
             return res.status(404).json({ error: 'Todo not found' });
         }
 
-        todo.completed = completed;
+        // Update fields if they are provided
+        if (title !== undefined) todo.title = title;
+        if (description !== undefined) todo.description = description;
+        if (datePosted !== undefined) todo.datePosted = datePosted;
+        if (timePosted !== undefined) todo.timePosted = timePosted;
+        if (completed !== undefined) todo.completed = completed;
+
         await todo.save();
 
         res.status(200).json({ 

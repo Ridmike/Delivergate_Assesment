@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, SafeAreaView, StatusBar, ScrollView, TouchableWithoutFeedback, Alert, ActivityIndicator, Platform, Modal } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, SafeAreaView, StatusBar, ScrollView, TouchableWithoutFeedback, Alert, ActivityIndicator, Platform, Modal, Animated, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore';
@@ -11,7 +11,51 @@ import { BlurView } from 'expo-blur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = useAuthStore();
+const ShimmerCard = () => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const shimmerAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedValue, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    
+    shimmerAnimation.start();
+
+    return () => {
+      shimmerAnimation.stop();
+      animatedValue.setValue(0);
+    };
+  }, []);
+
+  const opacity = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  return (
+    <View style={styles.taskCard}>
+      <Animated.View style={[styles.shimmerCircle, { opacity }]} />
+      <View style={styles.taskTextContainer}>
+        <Animated.View style={[styles.shimmerTitle, { opacity }]} />
+        <Animated.View style={[styles.shimmerTime, { opacity }]} />
+      </View>
+    </View>
+  );
+};
+
+const Home: React.FC<Props> = ({ navigation, route }) => {
+  const { user, token } = useAuthStore();
   const [selectedDate, setSelectedDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -21,7 +65,8 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [calendarDates, setCalendarDates] = useState<Array<{ day: string; date: number; fullDate: string }>>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  // API URLs for different environments
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const API_URL = Platform.select({
     android: 'http://192.168.1.11:3000/api',     // Android Emulator
     ios: 'http://localhost:3000/api',         // iOS Simulator
@@ -233,27 +278,40 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
         )}
       </TouchableOpacity>
     );
-  };
-
-  const renderTask = ({ item }: { item: Task }) => (
-    <View>      <TouchableOpacity
+  };  const renderTask = ({ item }: { item: Task }) => (
+    <View style={styles.taskContainer}>
+      <TouchableOpacity
         style={styles.taskCard}
         onPress={() => handleTaskPress(item)}
       >
         <TouchableOpacity
           style={[styles.circle, item.completed && styles.completedCircle]}
-          onPress={() => toggleTaskCompletion(item._id)}
+          onPress={(e) => {
+            e.stopPropagation();
+            toggleTaskCompletion(item._id);
+          }}
         >
           {item.completed && (
-            <Ionicons name="checkmark" size={16} color="white" />
+            <Text>
+              <Ionicons name="checkmark" size={16} color="white" />
+            </Text>
           )}
         </TouchableOpacity>
 
         <View style={styles.taskTextContainer}>
-          <Text style={[styles.taskTitle, item.completed && styles.completedTaskTitle]}>
+          <Text 
+            style={[styles.taskTitle, item.completed && styles.completedTaskTitle]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {item.title}
           </Text>
-          <Text style={styles.taskTime}>{item.timePosted}</Text>
+          <Text 
+            style={styles.taskTime}
+            numberOfLines={1}
+          >
+            {item.timePosted}
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -262,11 +320,11 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
             setSelectedTaskId(prev => (prev === item._id ? null : item._id))
           }
         >
-          <Ionicons name="ellipsis-horizontal" size={20} color="rgba(255,255,255,0.7)" />
+          <Text>
+            <Ionicons name="ellipsis-horizontal" size={20} color="rgba(255,255,255,0.7)" />
+          </Text>
         </TouchableOpacity>
-      </TouchableOpacity>
-
-      {selectedTaskId === item._id && (
+      </TouchableOpacity>      {selectedTaskId === item._id && (
         <View style={styles.optionsPopup}>
           <TouchableOpacity
             style={styles.optionItem}
@@ -275,14 +333,18 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
               setSelectedTaskId(null);
             }}
           >
-            <Ionicons name="create-outline" size={20} color="#6366f1" />
+            <Text>
+              <Ionicons name="create-outline" size={20} color="#6366f1" />
+            </Text>
             <Text style={styles.optionText}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.optionItem}
             onPress={() => deleteTask(item._id)}
           >
-            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+            <Text>
+              <Ionicons name="trash-outline" size={20} color="#ef4444" />
+            </Text>
             <Text style={[styles.optionText, { color: '#ef4444' }]}>Delete</Text>
           </TouchableOpacity>
         </View>
@@ -333,7 +395,9 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
                       navigation.navigate('EditScreen', { task: selectedTask });
                     }}
                   >
-                    <Ionicons name="create-outline" size={20} color="#6366f1" />
+                    <Text>
+                      <Ionicons name="create-outline" size={20} color="#6366f1" />
+                    </Text>
                     <Text style={styles.modalButtonText}>Edit</Text>
                   </TouchableOpacity>
 
@@ -344,7 +408,9 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
                       setSelectedTask(null);
                     }}
                   >
-                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                    <Text>
+                      <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                    </Text>
                     <Text style={[styles.modalButtonText, { color: '#ef4444' }]}>Delete</Text>
                   </TouchableOpacity>
                 </View>
@@ -355,6 +421,19 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
       </Modal>
     );
   };
+
+  // Effect to handle refresh from navigation params
+  useEffect(() => {
+    if (route.params?.refresh) {
+      fetchTasks(selectedDate);
+    }
+  }, [route.params?.refresh, route.params?.timestamp]);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await fetchTasks(selectedDate);
+    setIsRefreshing(false);
+  }, [selectedDate]);
 
   return (
     <TouchableWithoutFeedback onPress={() => {
@@ -367,15 +446,20 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
 
           <View style={styles.header}>
             <TouchableOpacity onPress={() => setIsSidePanelOpen(true)}>
-              <Ionicons name="menu" size={24} color="white" />
+              <Text>
+                <Ionicons name="menu" size={24} color="white" />
+              </Text>
             </TouchableOpacity>
-            <Text style={styles.logo}>Miodo Logo</Text>            <TouchableOpacity onPress={handleProfilePress}>
+            <Text style={styles.logo}>Miodo Logo</Text>
+            <TouchableOpacity onPress={handleProfilePress}>
               <View style={styles.profilePicture}>
-                <Ionicons 
-                  name={user ? "person" : "person-outline"} 
-                  size={20} 
-                  color="#6366f1" 
-                />
+                <Text>
+                  <Ionicons 
+                    name={user ? "person" : "person-outline"} 
+                    size={20} 
+                    color="#6366f1" 
+                  />
+                </Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -388,7 +472,9 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
 
           <View style={styles.searchContainer}>
             <View style={styles.searchBar}>
-              <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+              <Text>
+                <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+              </Text>
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search tasks"
@@ -408,29 +494,33 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.dateList}
             />
-          </View>
-
-          <ScrollView style={styles.tasksContainer} showsVerticalScrollIndicator={false}>
-            {isLoading ? (
-              <View style={styles.emptyContainer}>
-                <ActivityIndicator size="large" color="white" />
-              </View>
-            ) : (
-              <>
-                {filteredTasks.map(task => (
-                  <View key={task._id}>{renderTask({ item: task })}</View>
-                ))}
-                {filteredTasks.length === 0 && (
-                  <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>No tasks found</Text>
-                  </View>
-                )}
-              </>
-            )}
-          </ScrollView>
+          </View>          <FlatList
+            style={styles.tasksContainer}
+            contentContainerStyle={{ flexGrow: 1 }}
+            data={isLoading ? Array(4).fill({}) : filteredTasks}
+            renderItem={isLoading ? () => <ShimmerCard /> : renderTask}
+            keyExtractor={(item, index) => isLoading ? index.toString() : item._id}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                tintColor="#6366f1"
+              />
+            }
+            ListEmptyComponent={
+              !isLoading ? (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No tasks found</Text>
+                </View>
+              ) : null
+            }
+          />
 
           <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddTask')}>
-            <Ionicons name="add" size={24} color="#6366f1" />
+            <Text>
+              <Ionicons name="add" size={24} color="#6366f1" />
+            </Text>
           </TouchableOpacity>
 
           {isSidePanelOpen && (
@@ -444,6 +534,7 @@ const Home: React.FC<Props> = ({ navigation }) => {  const { user, token } = use
           <SidePanel 
             isOpen={isSidePanelOpen}
             onClose={() => setIsSidePanelOpen(false)}
+            navigation={navigation}
           />
 
           {renderTaskDetails()}
@@ -478,7 +569,10 @@ const styles = StyleSheet.create({
   taskCounterContainer: { paddingHorizontal: 20, marginBottom: 20 },
   taskCountText: { fontSize: 20, color: 'rgba(255,255,255,0.9)', fontWeight: '300' },
   taskNumber: { fontWeight: '700', color: 'white' },
-  searchContainer: { paddingHorizontal: 20, marginBottom: 20 },
+  searchContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -492,8 +586,15 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, fontSize: 16, color: '#374151' },
+  searchIcon: { 
+    marginRight: 10 
+  },
+  searchInput: { 
+    flex: 1, 
+    fontSize: 16, 
+    color: '#374151',
+    height: '100%',
+  },
   calendarContainer: { marginBottom: 20 },
   dateList: { paddingHorizontal: 15 },
   dateItem: {
@@ -575,9 +676,10 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyText: {
+    textAlign: 'center',
     color: 'rgba(255,255,255,0.7)',
     fontSize: 16,
-    fontStyle: 'italic',
+    marginTop: 20,
   },
   optionsPopup: {
     position: 'absolute',
@@ -685,5 +787,28 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: 'rgba(239,68,68,0.1)',
+  },
+  shimmerCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginRight: 15,
+  },
+  shimmerTitle: {
+    width: '60%',
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginBottom: 8,
+  },  shimmerTime: {
+    width: '40%',
+    height: 14,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  taskContainer: {
+    width: '100%',
+    marginBottom: 8,
   },
 });

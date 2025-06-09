@@ -1,17 +1,35 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../App';
+import { useAuthStore } from '../store/authStore';
 
-const EditScreen = () => {
-  const navigation = useNavigation();
-  const [date, setDate] = useState(new Date());
+type Props = NativeStackScreenProps<RootStackParamList, 'EditScreen'>;
+
+const EditScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { task } = route.params;
+  const { token } = useAuthStore();
+  const API_URL = Platform.select({
+    android: 'http://192.168.1.11:3000/api',
+    ios: 'http://localhost:3000/api',
+    default: 'http://192.168.1.11:3000/api'
+  });
+
+  // Initialize state with existing task data
+  const [date, setDate] = useState(() => {
+    if (task?.datePosted) {
+      const [year, month, day] = task.datePosted.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    return new Date();
+  });
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [time, setTime] = useState('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [time, setTime] = useState(task?.timePosted || '');
+  const [title, setTitle] = useState(task?.title || '');
+  const [description, setDescription] = useState(task?.description || '');
   const [showTimePicker, setShowTimePicker] = useState(false);
 
   // Handle date selection
@@ -24,11 +42,10 @@ const EditScreen = () => {
 
   // Format date for display
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const handleTimeChange = (_event: any, selectedTime?: Date) => {
@@ -45,21 +62,59 @@ const EditScreen = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim() || !time) {
-      alert('Please fill in all fields before saving the task.');
+      Alert.alert('Error', 'Please fill in all fields before saving the task.');
       return;
     }
 
-    const taskData = {
-      date: formatDate(date),
-      time,
-      title,
-      description,
-    };
+    if (!token) {
+      Alert.alert('Error', 'Please sign in to update tasks');
+      navigation.navigate('SignIn');
+      return;
+    }
 
-    alert('Task saved successfully!');
-    navigation.goBack();
+    try {
+      const response = await fetch(`${API_URL}/todos/${task._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          datePosted: formatDate(date),
+          timePosted: time
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update task');
+      }
+
+      Alert.alert(
+        'Success', 
+        'Task updated successfully!', 
+        [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              // Navigate to home screen and force a refresh
+              navigation.navigate('Home', {
+                refresh: true,
+                timestamp: new Date().getTime() // Force refresh by passing new timestamp
+              });
+            }
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Error updating task:', error);
+      Alert.alert('Error', error.message || 'Failed to update task');
+    }
   };
 
   return (
