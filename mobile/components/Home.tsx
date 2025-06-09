@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/authStore';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { Task } from '../types';
-import SidePanel from './SidePanel';
+// import SidePanel from './SidePanel';
 import { BlurView } from 'expo-blur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -278,7 +278,9 @@ const Home: React.FC<Props> = ({ navigation, route }) => {
         )}
       </TouchableOpacity>
     );
-  };  const renderTask = ({ item }: { item: Task }) => (
+  };
+
+  const renderTask = ({ item }: { item: Task }) => (
     <View style={styles.taskContainer}>
       <TouchableOpacity
         style={styles.taskCard}
@@ -292,9 +294,7 @@ const Home: React.FC<Props> = ({ navigation, route }) => {
           }}
         >
           {item.completed && (
-            <Text>
-              <Ionicons name="checkmark" size={16} color="white" />
-            </Text>
+            <Ionicons name="checkmark" size={16} color="white" />
           )}
         </TouchableOpacity>
 
@@ -316,15 +316,13 @@ const Home: React.FC<Props> = ({ navigation, route }) => {
 
         <TouchableOpacity
           style={styles.optionsButton}
-          onPress={() =>
-            setSelectedTaskId(prev => (prev === item._id ? null : item._id))
-          }
+          onPress={() => setSelectedTaskId(prev => (prev === item._id ? null : item._id))}
         >
-          <Text>
-            <Ionicons name="ellipsis-horizontal" size={20} color="rgba(255,255,255,0.7)" />
-          </Text>
+          <Ionicons name="ellipsis-horizontal" size={20} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
-      </TouchableOpacity>      {selectedTaskId === item._id && (
+      </TouchableOpacity>
+
+      {selectedTaskId === item._id && (
         <View style={styles.optionsPopup}>
           <TouchableOpacity
             style={styles.optionItem}
@@ -333,18 +331,14 @@ const Home: React.FC<Props> = ({ navigation, route }) => {
               setSelectedTaskId(null);
             }}
           >
-            <Text>
-              <Ionicons name="create-outline" size={20} color="#6366f1" />
-            </Text>
+            <Ionicons name="create-outline" size={20} color="#6366f1" />
             <Text style={styles.optionText}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.optionItem}
             onPress={() => deleteTask(item._id)}
           >
-            <Text>
-              <Ionicons name="trash-outline" size={20} color="#ef4444" />
-            </Text>
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
             <Text style={[styles.optionText, { color: '#ef4444' }]}>Delete</Text>
           </TouchableOpacity>
         </View>
@@ -389,29 +383,22 @@ const Home: React.FC<Props> = ({ navigation, route }) => {
 
                 <View style={styles.modalActions}>
                   <TouchableOpacity 
-                    style={styles.modalButton} 
+                    style={styles.modalButton}
                     onPress={() => {
                       setSelectedTask(null);
                       navigation.navigate('EditScreen', { task: selectedTask });
                     }}
                   >
-                    <Text>
-                      <Ionicons name="create-outline" size={20} color="#6366f1" />
-                    </Text>
-                    <Text style={styles.modalButtonText}>Edit</Text>
+                    <Ionicons name="create-outline" size={20} color="#6366f1" />
                   </TouchableOpacity>
-
                   <TouchableOpacity 
-                    style={[styles.modalButton, styles.deleteButton]} 
+                    style={[styles.modalButton, styles.deleteButton]}
                     onPress={() => {
                       deleteTask(selectedTask._id);
                       setSelectedTask(null);
                     }}
                   >
-                    <Text>
-                      <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                    </Text>
-                    <Text style={[styles.modalButtonText, { color: '#ef4444' }]}>Delete</Text>
+                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -445,21 +432,13 @@ const Home: React.FC<Props> = ({ navigation, route }) => {
         <LinearGradient colors={["#6366f1", "#8b5cf6", "#a855f7"]} style={styles.gradient}>
 
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => setIsSidePanelOpen(true)}>
-              <Text>
-                <Ionicons name="menu" size={24} color="white" />
-              </Text>
-            </TouchableOpacity>
-            <Text style={styles.logo}>Miodo Logo</Text>
+            {/* <TouchableOpacity onPress={() => setIsSidePanelOpen(true)}>
+              <Ionicons name="menu" size={24} color="white" />
+            </TouchableOpacity> */}
+            <Text style={styles.logo}>Tidy Doc</Text>
             <TouchableOpacity onPress={handleProfilePress}>
               <View style={styles.profilePicture}>
-                <Text>
-                  <Ionicons 
-                    name={user ? "person" : "person-outline"} 
-                    size={20} 
-                    color="#6366f1" 
-                  />
-                </Text>
+                <Ionicons name={user ? "person" : "person-outline"} size={20} color="#6366f1" />
               </View>
             </TouchableOpacity>
           </View>
@@ -472,9 +451,7 @@ const Home: React.FC<Props> = ({ navigation, route }) => {
 
           <View style={styles.searchContainer}>
             <View style={styles.searchBar}>
-              <Text>
-                <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
-              </Text>
+              <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search tasks"
@@ -494,7 +471,9 @@ const Home: React.FC<Props> = ({ navigation, route }) => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.dateList}
             />
-          </View>          <FlatList
+          </View>
+
+          <FlatList
             style={styles.tasksContainer}
             contentContainerStyle={{ flexGrow: 1 }}
             data={isLoading ? Array(4).fill({}) : filteredTasks}
@@ -518,9 +497,7 @@ const Home: React.FC<Props> = ({ navigation, route }) => {
           />
 
           <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddTask')}>
-            <Text>
-              <Ionicons name="add" size={24} color="#6366f1" />
-            </Text>
+            <Ionicons name="add" size={24} color="#6366f1" />
           </TouchableOpacity>
 
           {isSidePanelOpen && (
@@ -531,11 +508,11 @@ const Home: React.FC<Props> = ({ navigation, route }) => {
             />
           )}
 
-          <SidePanel 
+          {/* <SidePanel 
             isOpen={isSidePanelOpen}
             onClose={() => setIsSidePanelOpen(false)}
             navigation={navigation}
-          />
+          /> */}
 
           {renderTaskDetails()}
         </LinearGradient>
@@ -557,7 +534,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 20,
   },
-  logo: { fontSize: 18, fontWeight: '600', color: 'white' },
+  logo: { fontSize: 22, fontWeight: '600', color: 'white' },
   profilePicture: {
     width: 36,
     height: 36,
@@ -713,12 +690,12 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 998,
-  },  modalOverlay: {
+  },
+  modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.85)',
-    // padding: 16,
   },
   modalContent: {
     width: '100%',
@@ -732,7 +709,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.44,
     shadowRadius: 10.32,
     elevation: 16,
-  },  modalHeader: {
+  },
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -801,7 +779,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.3)',
     marginBottom: 8,
-  },  shimmerTime: {
+  },
+  shimmerTime: {
     width: '40%',
     height: 14,
     borderRadius: 8,

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Pressable, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/authStore';
 import { RootStackParamList } from '../App'; 
@@ -45,82 +46,133 @@ const Login = ({ navigation }: LoginProps) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.logo}>TidyDoc</Text>
-        
-        <View style={styles.headerContainer}>
-          <Text style={styles.title}>Welcome Back!</Text>
-          <Text style={styles.subtitle}>login to continue.</Text>
-        </View>
-
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={formData.email}
-            onChangeText={(text) => setFormData({...formData, email: text})}
-          />
-
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Enter your password"
-              secureTextEntry={!showPassword}
-              value={formData.password}
-              onChangeText={(text) => setFormData({...formData, password: text})}
-            />
-            <Pressable onPress={() => setShowPassword(!showPassword)}>
-              <Ionicons 
-                name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                size={24} 
-                color="#8b5cf6"
-              />
-            </Pressable>
-          </View>
-
-          <TouchableOpacity 
-            style={[styles.loginButton, isLoading && styles.disabledButton]}
-            onPress={handleLogin}
-            disabled={isLoading}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <LinearGradient
+          colors={['#6366f1', '#8b5cf6', '#a855f7']}
+          style={styles.gradient}
+        >
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            bounces={false}
+            showsVerticalScrollIndicator={false}
           >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.loginButtonText}>LOGIN</Text>
-            )}
-          </TouchableOpacity>
+            <View style={styles.content}>
+              <View style={styles.logoContainer}>
+                <Text style={styles.logo}>TidyDoc</Text>
+                <Text style={styles.tagline}>Organize your tasks efficiently</Text>
+              </View>
+              
+              <View style={styles.card}>
+                <View style={styles.headerContainer}>
+                  <Text style={styles.title}>Welcome Back!</Text>
+                  <Text style={styles.subtitle}>Login to continue your journey</Text>
+                </View>
 
-          <View style={styles.signUpContainer}>
-            <Text style={styles.signUpText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-              <Text style={styles.signUpLink}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+                <View style={styles.form}>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="mail-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your email"
+                      placeholderTextColor="#9ca3af"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={formData.email}
+                      onChangeText={(text) => setFormData({...formData, email: text})}
+                    />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your password"
+                      placeholderTextColor="#9ca3af"
+                      secureTextEntry={!showPassword}
+                      value={formData.password}
+                      onChangeText={(text) => setFormData({...formData, password: text})}
+                    />
+                    <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                      <Ionicons 
+                        name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                        size={20} 
+                        color="#6b7280"
+                      />
+                    </Pressable>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={[styles.loginButton, isLoading && styles.disabledButton]}
+                    onPress={handleLogin}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Text style={styles.loginButtonText}>LOGIN</Text>
+                        <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.buttonIcon} />
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={styles.signUpContainer}>
+                    <Text style={styles.signUpText}>Don't have an account? </Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+                      <Text style={styles.signUpLink}>Sign Up</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        </LinearGradient>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  // ... same styles as SignUp with different button colors
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  gradient: {
+    flex: 1,
   },
   content: {
     flex: 1,
+    justifyContent: 'center',
     padding: 20,
+  },
+  logoContainer: {
     alignItems: 'center',
+    marginBottom: 40,
   },
   logo: {
-    fontSize: 32,
-    color: '#8b5cf6',
+    fontSize: 40,
     fontWeight: 'bold',
-    marginTop: 40,
-    marginBottom: 20,
+    color: 'white',
+    marginBottom: 10,
+  },
+  tagline: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   headerContainer: {
     alignItems: 'center',
@@ -130,41 +182,45 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#1f2937',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: '#6b7280',
-    marginTop: 5,
   },
   form: {
     width: '100%',
   },
-  input: {
-    backgroundColor: '#f3f4f6',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    fontSize: 16,
-  },
-  passwordContainer: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f3f4f6',
-    borderRadius: 10,
-    marginBottom: 15,
-    paddingRight: 15,
+    borderRadius: 12,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
-  passwordInput: {
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
     flex: 1,
-    padding: 15,
+    paddingVertical: 12,
     fontSize: 16,
+    color: '#374151',
+  },
+  eyeIcon: {
+    padding: 4,
   },
   loginButton: {
-    backgroundColor: '#8b5cf6',
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: '#6366f1',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   disabledButton: {
     opacity: 0.7,
@@ -174,6 +230,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  buttonIcon: {
+    marginLeft: 8,
+  },
   signUpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -181,10 +240,15 @@ const styles = StyleSheet.create({
   },
   signUpText: {
     color: '#6b7280',
+    fontSize: 15,
   },
   signUpLink: {
-    color: '#8b5cf6',
+    color: '#6366f1',
     fontWeight: 'bold',
+    fontSize: 15,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
 });
 

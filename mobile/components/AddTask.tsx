@@ -80,7 +80,8 @@ const handleSubmit = async () => {
 
     const response = await fetch(`${API_URL}/todos`, {
       method: 'POST',
-      headers: {
+      headers:
+       {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },

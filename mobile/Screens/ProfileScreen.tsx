@@ -6,9 +6,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import type { StackNavigationProp } from '@react-navigation/stack';
 
-type RootStackParamList = {Login: undefined};
+type RootStackParamList = {
+  Home: undefined;
+  SignIn: undefined;
+};
 
-type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
+type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
 interface ProfileProps {
   navigation: ProfileScreenNavigationProp;
@@ -27,13 +30,9 @@ const Profile = ({ navigation }: ProfileProps) => {
           style: "cancel"
         },
         {
-          text: "Logout",
-          onPress: async () => {
+          text: "Logout",          onPress: async () => {
             await logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
+            navigation.navigate('Home');
           }
         }
       ]
@@ -66,23 +65,23 @@ const Profile = ({ navigation }: ProfileProps) => {
             <Ionicons name="chevron-forward" size={24} color="white" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          {/* <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="notifications-outline" size={24} color="white" />
             <Text style={styles.menuText}>Notifications</Text>
             <Ionicons name="chevron-forward" size={24} color="white" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
-          <TouchableOpacity style={styles.menuItem}>
+          {/* <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="settings-outline" size={24} color="white" />
             <Text style={styles.menuText}>Settings</Text>
             <Ionicons name="chevron-forward" size={24} color="white" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity 
             style={[styles.menuItem, styles.logoutButton]}
             onPress={handleLogout}
           >
-            <Ionicons name="log-out-outline" size={24} color="#ef4444" />
+            <Ionicons name="log-out-outline" size={24} color="red" />
             <Text style={[styles.menuText, styles.logoutText]}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -152,10 +151,10 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginTop: 20,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(244, 8, 8, 0.2)',
   },
   logoutText: {
-    color: '#ef4444',
+    color: 'red',
   },
 });
 
