@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Pressable, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Pressable, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -61,6 +61,11 @@ const Login = ({ navigation }: LoginProps) => {
           >
             <View style={styles.content}>
               <View style={styles.logoContainer}>
+                <Image 
+                  source={require('../assets/logo.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
                 <Text style={styles.logo}>TidyDoc</Text>
                 <Text style={styles.tagline}>Organize your tasks efficiently</Text>
               </View>
@@ -139,6 +144,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   gradient: {
     flex: 1,
   },
@@ -146,40 +154,48 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   logoContainer: {
     alignItems: 'center',
     marginBottom: 40,
   },
+  logoImage: {
+    width: Dimensions.get('window').width * 0.4,
+    height: Dimensions.get('window').width * 0.4,
+    marginBottom: 20,
+  },
   logo: {
-    fontSize: 40,
+    fontSize: 32,
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 10,
   },
   tagline: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.9)',
+    letterSpacing: 0.5,
   },
   card: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 24,
+    padding: 24,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    marginHorizontal: 4,
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 32,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#1f2937',
     marginBottom: 8,
@@ -187,6 +203,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#6b7280',
+    letterSpacing: 0.3,
   },
   form: {
     width: '100%',
@@ -195,9 +212,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f3f4f6',
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
@@ -206,29 +224,38 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 16,
     color: '#374151',
   },
   eyeIcon: {
-    padding: 4,
+    padding: 8,
   },
   loginButton: {
     backgroundColor: '#6366f1',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     marginTop: 24,
     flexDirection: 'row',
     justifyContent: 'center',
+    shadowColor: '#6366f1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
   disabledButton: {
     opacity: 0.7,
   },
   loginButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   buttonIcon: {
     marginLeft: 8,
@@ -236,19 +263,16 @@ const styles = StyleSheet.create({
   signUpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 24,
   },
   signUpText: {
     color: '#6b7280',
-    fontSize: 15,
+    fontSize: 16,
   },
   signUpLink: {
     color: '#6366f1',
     fontWeight: 'bold',
-    fontSize: 15,
-  },
-  scrollContent: {
-    flexGrow: 1,
+    fontSize: 16,
   },
 });
 
